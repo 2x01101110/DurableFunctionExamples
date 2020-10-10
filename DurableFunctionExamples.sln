@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30523.141
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "FunctionChaining", "FunctionChaining", "{4B34A834-27A9-4696-91C7-30209E4EA96D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FunctionChainingExample", "FunctionChaining\FunctionChainingExample\FunctionChainingExample.csproj", "{472CF162-87C2-4970-AD4B-E432B6680E1D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{472CF162-87C2-4970-AD4B-E432B6680E1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{472CF162-87C2-4970-AD4B-E432B6680E1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{472CF162-87C2-4970-AD4B-E432B6680E1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{472CF162-87C2-4970-AD4B-E432B6680E1D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{472CF162-87C2-4970-AD4B-E432B6680E1D} = {4B34A834-27A9-4696-91C7-30209E4EA96D}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C9CB5344-0072-458D-B890-43354B1277F8}
+	EndGlobalSection
+EndGlobal
