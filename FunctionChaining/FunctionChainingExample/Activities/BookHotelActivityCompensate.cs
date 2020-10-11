@@ -2,6 +2,8 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace FunctionChainingExample.Activities
@@ -9,13 +11,15 @@ namespace FunctionChainingExample.Activities
     public static class BookHotelActivityCompensate
     {
         [FunctionName(nameof(BookHotelActivityCompensate))]
-        public static Task Run([ActivityTrigger]IDurableActivityContext activityContext, ILogger log)
+        public static ActivityResult Run([ActivityTrigger]IDurableActivityContext context, ILogger log)
         {
-            var hotel = activityContext.GetInput<Hotel>();
+            var input = context.GetInput<Dictionary<string, object>>();
 
-            log.LogInformation($"Instace {activityContext.InstanceId} executing {nameof(BookHotelActivityCompensate)} for hotel {hotel.BookingId}");
+            var booking = JsonConvert.DeserializeObject<Booking>(input["Booking"].ToString());
 
-            return Task.CompletedTask;
+            booking.Hotel.InvalidateActionResult("Activity was compensated");
+
+            return booking.Hotel;
         }
     }
 }

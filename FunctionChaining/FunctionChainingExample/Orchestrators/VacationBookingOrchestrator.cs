@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Specialized;
+using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Tasks;
-using Dynamitey;
-using Dynamitey.DynamicObjects;
 using FunctionChainingExample.Activities;
 using FunctionChainingExample.Models;
-using ImpromptuInterface.Optimization;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -18,24 +16,52 @@ namespace FunctionChainingExample.Orchestrators
         [FunctionName(nameof(VacationBookingOrchestrator))]
         public async Task<Booking> Run([OrchestrationTrigger]IDurableOrchestrationContext context, ILogger log)
         {
+            var input = context.GetInput<BookingRequest>();
+
             Booking booking = new Booking();
             int successfullSteps = 0;
 
-            var bookingActivities = new List<string>
+            var bookingActivities = new List<Activity>
             {
-                nameof(BookHotelActivity),
-                nameof(BookFlightActivity)
+                new Activity 
+                { 
+                    Name = nameof(BookHotelActivity),
+                    Input = new Dictionary<string, object>
+                    {
+                        { "ClientId", input.ClientId },
+                        { "DealId", input.DealId }
+                    }
+                },
+                new Activity
+                {
+                    Name = nameof(BookFlightActivity),
+                    Input = new Dictionary<string, object>
+                    {
+                        { "DealId", input.DealId }
+                    }
+                },
+                new Activity
+                {
+                    Name =  nameof(PaymentActivity),
+                    Input = new Dictionary<string, object>
+                    {
+                        { "ClientId", input.ClientId }
+                    }
+                }
             };
 
             foreach (var activity in bookingActivities)
             {
                 try
                 {
-                    var result = await ActivityFactory(context, activity, booking);
+                    activity.Input.Add("Booking", booking);
+
+                    var result = await ActivityFactory(context, activity.Name, activity.Input);
 
                     if (!result.CompletedSuccessfuly) break;
 
                     UpdateBooking(booking, result, result.ActivityName);
+
                     successfullSteps++;
                 }
                 catch (Exception)
@@ -46,15 +72,15 @@ namespace FunctionChainingExample.Orchestrators
 
             if (successfullSteps != bookingActivities.Count && successfullSteps - 1 > 0)
             {
-                bookingActivities = bookingActivities.GetRange(0, successfullSteps - 1);
+                bookingActivities = bookingActivities.GetRange(0, successfullSteps);
                 bookingActivities.Reverse();
 
                 foreach (var activity in bookingActivities)
                 {
-                    await ActivityFactory(context, $"{nameof(activity)}Compensate", booking);
-                }
+                    var result = await ActivityFactory(context, $"{activity.Name}Compensate", activity.Input);
 
-                booking = null;
+                    UpdateBooking(booking, result, result.ActivityName);
+                }
             }
 
             return booking;
@@ -70,12 +96,20 @@ namespace FunctionChainingExample.Orchestrators
                 case nameof(BookFlightActivity):
                     booking.Flight = activityResult;
                     break;
+                case nameof(PaymentActivity):
+                    booking.Payment = activityResult;
+                    break;
+                default:
+                    throw new Exception($"Activity {activityName} was not found and activity result could not be saved");
             }
         }
 
-        private Task<ActivityResult> ActivityFactory(IDurableOrchestrationContext context, string activityName, Booking booking)
+        private Task<ActivityResult> ActivityFactory(
+            IDurableOrchestrationContext context, 
+            string activityName,
+            Dictionary<string, object> input)
         {
-            return context.CallActivityAsync<ActivityResult>(activityName, booking);
+            return context.CallActivityAsync<ActivityResult>(activityName, input);
         }
     }
 }

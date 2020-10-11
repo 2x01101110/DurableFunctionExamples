@@ -6,7 +6,7 @@ namespace FunctionChainingExample.Models
     {
         public string ActivityName { get; }
         public bool CompletedSuccessfuly { get; }
-        public object Result { get; }
+        public object Result { get; private set; }
 
         [JsonConstructor]
         private ActivityResult(string activityName, object result, bool completedSuccessfuly)
@@ -21,25 +21,10 @@ namespace FunctionChainingExample.Models
 
         public static ActivityResult Rejected(string activityName, object rejectedResult = null) 
             => new ActivityResult(activityName, rejectedResult, false);
+
+        public void InvalidateActionResult(string reason)
+        {
+            this.Result = null;
+        }
     }
-
-
-    //public sealed class ActivityResult<TOutput> where TOutput : class
-    //{
-    //    public bool CompletedSuccessfuly { get; }
-    //    public TOutput Result { get; }
-
-    //    [JsonConstructor]
-    //    private ActivityResult(TOutput result, bool completedSuccessfuly)
-    //    {
-    //        this.Result = result;
-    //        this.CompletedSuccessfuly = completedSuccessfuly;
-    //    }
-
-    //    public static ActivityResult<TOutput> Fulfilled<TInput>(TOutput fulfiledResult = null) where TInput : class
-    //        => new ActivityResult<TOutput>(fulfiledResult, true);
-
-    //    public static ActivityResult<TOutput> Rejected<TInput>(TOutput rejectedResult = null)  where TInput : class
-    //        => new ActivityResult<TOutput>(rejectedResult, false);
-    //}
 }

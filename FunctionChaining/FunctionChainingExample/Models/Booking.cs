@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 
 namespace FunctionChainingExample.Models
@@ -7,11 +8,19 @@ namespace FunctionChainingExample.Models
     {
         public ActivityResult Hotel { get; set; }
         public ActivityResult Flight { get; set; }
+        public ActivityResult Payment { get; set; }
 
-        public IEnumerable<bool> SuccessfullActivities()
+        [JsonConstructor]
+        public Booking(ActivityResult hotel, ActivityResult flight, ActivityResult payment)
         {
-            yield return this.Hotel.CompletedSuccessfuly;
-            yield return this.Flight.CompletedSuccessfuly;
+            this.Hotel = hotel;
+            this.Flight = flight;
+            this.Payment = payment;
+        }
+
+        public Booking()
+        {
+
         }
     }
 }
