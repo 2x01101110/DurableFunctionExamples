@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Tasks;
 using FunctionChainingExample.Activities;
 using FunctionChainingExample.Models;
