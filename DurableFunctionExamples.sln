@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FunctionChainingExample", "
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HumanInteraction", "HumanInteraction", "{EEE22304-24AF-441B-96D6-7657453A0A47}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumanInteractionExample", "HumanInteraction\HumanInteractionExample\HumanInteractionExample.csproj", "{95B12D41-66F6-49D8-A384-26861DF43650}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HumanInteractionExample", "HumanInteraction\HumanInteractionExample\HumanInteractionExample.csproj", "{95B12D41-66F6-49D8-A384-26861DF43650}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

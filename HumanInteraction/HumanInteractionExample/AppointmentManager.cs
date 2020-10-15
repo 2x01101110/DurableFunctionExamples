@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Threading.Tasks;
 
 namespace HumanInteractionExample
@@ -17,7 +18,14 @@ namespace HumanInteractionExample
             [DurableClient]IDurableClient durableClient,
             ILogger log)
         {
-            string instanceId = await durableClient.StartNewAsync(nameof(AppointmentSchedulingOrchestrator));
+            Random random = new Random();
+            string appointmentIdentifer = random.Next(1000, 9999).ToString();
+            string instanceIdentifer = $"+37124426622-{appointmentIdentifer}";
+
+            string instanceId = await durableClient.StartNewAsync(
+                nameof(AppointmentSchedulingOrchestrator),
+                instanceIdentifer, 
+                appointmentIdentifer);
 
             return durableClient.CreateCheckStatusResponse(req, instanceId);
         }
