@@ -1,9 +1,11 @@
 ﻿using Dynamitey.DynamicObjects;
 using HumanInteractionExample.Activities;
+using HumanInteractionExample.Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,76 +17,72 @@ namespace HumanInteractionExample.Orchestrators
         [FunctionName(nameof(AppointmentSchedulingOrchestrator))]
         public async Task Run([OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
-            using CancellationTokenSource source = new CancellationTokenSource();
+            log = context.CreateReplaySafeLogger(log);
 
-            //var task1 = await context.WaitForExternalEvent("ApproveAppointment", new System.TimeSpan(0, 0, 5), default(string), source.Token);
+            var appointment = context.GetInput<ClientAppointment>();
 
-            //if (task1 == default)
-            //{
-            //    source.Cancel();
-            //}
+            // Create confirmation code for appointment, send it to client, and return code as result
+            var confirmationCode = await context
+                .CallActivityAsync<ConfirmationCode>(nameof(AppointmentConfirmationNotificationActivity), appointment.PhoneNumber);
 
-            if (!source.IsCancellationRequested)
+            using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+            var confirmationExpiration = context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(20), cancellationTokenSource.Token);
+            var appointmentConfirmation = context.WaitForExternalEvent<ConfirmationCode>("ConfirmAppointment");
+
+            var tasks = new List<Task> { appointmentConfirmation, confirmationExpiration };
+
+            // Give client X ammount of time to confirm appointment
+            do
             {
-                var cancelAppointment = context.WaitForExternalEvent("CancelAppointment", new System.TimeSpan(0, 0, 10), default(string), source.Token);
-                var remindAppointment = context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(15), source.Token);
+                var result = await Task.WhenAny(tasks);
 
-                var tasks = new List<Task> { cancelAppointment, remindAppointment };
+                if (result == appointmentConfirmation)
+                {
+                    if (appointmentConfirmation.Result.Code == confirmationCode.Code)
+                    {
+                        log.LogInformation($"Appointment {appointment.AppointmentId} confirmed");
+                        break;
+                    }
+                }
+                if (result == confirmationExpiration)
+                {
+                    log.LogWarning($"Appointment {appointment.AppointmentId} failed to be confirmed");
+                    cancellationTokenSource.Cancel();
+                }
 
+            } while (!cancellationTokenSource.IsCancellationRequested);
+
+            if (!cancellationTokenSource.IsCancellationRequested)
+            {
+                var appointmentCancelation = context.WaitForExternalEvent("CancelAppointment");
+                var appointmentReminder = context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(15), cancellationTokenSource.Token);
+                var instanceExpiration = context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(25), cancellationTokenSource.Token);
+
+                tasks = new List<Task> { appointmentCancelation, appointmentReminder, instanceExpiration };
+
+                // Wait for appointment reminder/cancelation task completions
                 do
                 {
                     var result = await Task.WhenAny(tasks);
 
-                    if (result == cancelAppointment)
+                    if (result == appointmentCancelation)
                     {
-                        log.LogInformation("Canceling appponintment");
-                        source.Cancel();
+                        log.LogWarning($"Instance {context.InstanceId} canceling appointment");
+                        cancellationTokenSource.Cancel();
                     }
-                    else if (result == remindAppointment)
+                    else if (result == appointmentReminder)
                     {
                         log.LogInformation("Sending appponintment reminder");
-                        tasks.Remove(remindAppointment);
+                        tasks.Remove(appointmentReminder);
                     }
-                } 
-                while (source.IsCancellationRequested != true);
+                    else if (result == instanceExpiration)
+                    {
+                        cancellationTokenSource.Cancel();
+                    }
+                }
+                while (!cancellationTokenSource.IsCancellationRequested);
             }
-
-
-            //string appointmentIdentifer = context.GetInput<string>();
-
-            //await context.CallActivityAsync(nameof(AppointmentConfirmationActivity), appointmentIdentifer);
-
-            //var result = await context.WaitForExternalEvent<dynamic>("CancelAppointment");
-
-            //if (result != null)
-            //{
-            //    log.LogInformation($"{result.From} {result.code}");
-            //    await context.CallActivityAsync(nameof(AppointmentCancelationActivity), null);
-            //}
-
-            #region Commented Out
-            //await context.CallActivityAsync<int>(nameof(AppointmentConfirmationChallengeActivity), null);
-
-            //using CancellationTokenSource source = new CancellationTokenSource();
-
-            //Task timeoutTask = context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(20), source.Token);
-
-            //Task<object> challengeResponseTask = context.WaitForExternalEvent<dynamic>("AppointmentConfirmationEvent");
-
-            //Task completedTask = await Task.WhenAny(challengeResponseTask, timeoutTask);
-
-            //if (completedTask == challengeResponseTask)
-            //{
-            //    log.LogInformation(JsonConvert.SerializeObject(challengeResponseTask.Result));
-            //}
-            //else
-            //{
-            //    log.LogInformation("Timed out");
-            //}
-
-            //source.Cancel();
-
-            #endregion
         }
     }
 }
