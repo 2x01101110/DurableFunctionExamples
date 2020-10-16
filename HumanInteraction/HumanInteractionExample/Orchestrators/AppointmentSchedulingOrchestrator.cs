@@ -1,8 +1,10 @@
-﻿using HumanInteractionExample.Activities;
+﻿using Dynamitey.DynamicObjects;
+using HumanInteractionExample.Activities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,17 +15,52 @@ namespace HumanInteractionExample.Orchestrators
         [FunctionName(nameof(AppointmentSchedulingOrchestrator))]
         public async Task Run([OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
-            string appointmentIdentifer = context.GetInput<string>();
+            using CancellationTokenSource source = new CancellationTokenSource();
 
-            await context.CallActivityAsync(nameof(AppointmentConfirmationActivity), appointmentIdentifer);
+            //var task1 = await context.WaitForExternalEvent("ApproveAppointment", new System.TimeSpan(0, 0, 5), default(string), source.Token);
 
-            var result = await context.WaitForExternalEvent<dynamic>("CancelAppointment");
+            //if (task1 == default)
+            //{
+            //    source.Cancel();
+            //}
 
-            if (result != null)
+            if (!source.IsCancellationRequested)
             {
-                log.LogInformation($"{result.From} {result.code}");
-                await context.CallActivityAsync(nameof(AppointmentCancelationActivity), null);
+                var cancelAppointment = context.WaitForExternalEvent("CancelAppointment", new System.TimeSpan(0, 0, 10), default(string), source.Token);
+                var remindAppointment = context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(15), source.Token);
+
+                var tasks = new List<Task> { cancelAppointment, remindAppointment };
+
+                do
+                {
+                    var result = await Task.WhenAny(tasks);
+
+                    if (result == cancelAppointment)
+                    {
+                        log.LogInformation("Canceling appponintment");
+                        source.Cancel();
+                    }
+                    else if (result == remindAppointment)
+                    {
+                        log.LogInformation("Sending appponintment reminder");
+                        tasks.Remove(remindAppointment);
+                    }
+                } 
+                while (source.IsCancellationRequested != true);
             }
+
+
+            //string appointmentIdentifer = context.GetInput<string>();
+
+            //await context.CallActivityAsync(nameof(AppointmentConfirmationActivity), appointmentIdentifer);
+
+            //var result = await context.WaitForExternalEvent<dynamic>("CancelAppointment");
+
+            //if (result != null)
+            //{
+            //    log.LogInformation($"{result.From} {result.code}");
+            //    await context.CallActivityAsync(nameof(AppointmentCancelationActivity), null);
+            //}
 
             #region Commented Out
             //await context.CallActivityAsync<int>(nameof(AppointmentConfirmationChallengeActivity), null);
@@ -49,7 +86,5 @@ namespace HumanInteractionExample.Orchestrators
 
             #endregion
         }
-
-
     }
 }
