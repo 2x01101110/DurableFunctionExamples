@@ -57,6 +57,7 @@ namespace HumanInteractionExample.Orchestrators
             {
                 var appointmentCancelation = context.WaitForExternalEvent("CancelAppointment");
                 var appointmentReminder = context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(15), cancellationTokenSource.Token);
+                // AFter this time expires, we assume that appointment is either currently happening or already happened
                 var instanceExpiration = context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(25), cancellationTokenSource.Token);
 
                 tasks = new List<Task> { appointmentCancelation, appointmentReminder, instanceExpiration };
